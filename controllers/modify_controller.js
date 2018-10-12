@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const config = require('../config/development_config');
 const verify = require('../models/verification_model');
 const updateAction = require('../models/update_model');
+const formidable = require('formidable');
+const fs = require('fs');
 
 
 check = new Check();
@@ -128,8 +130,13 @@ module.exports = class Member {
     }
 
     putUpdateImage(req, res, next) {
+        console.log('aaa')
         const form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
+            if(err){console.log(err)}
+            console.log('bbb')
+            console.log(fields)
+            console.log(files)
             res.json({
                 name: fields.name,
                 password: fields.password,
