@@ -1,11 +1,11 @@
-const toRegister = require('../models/register_model');
-const Check = require('../service/member_check');
-const encryption = require('../models/encryption_model');
-const loginAction = require('../models/login_model');
+const toRegister = require('../../models/member/register_model');
+const Check = require('../../service/member_check');
+const encryption = require('../../models/member/encryption_model');
+const loginAction = require('../../models/member/login_model');
 const jwt = require('jsonwebtoken');
-const config = require('../config/development_config');
-const verify = require('../models/verification_model');
-const updateAction = require('../models/update_model');
+const config = require('../../config/development_config');
+const verify = require('../../models/member/verification_model');
+const updateAction = require('../../models/member/update_model');
 const formidable = require('formidable');
 const fs = require('fs');
 
@@ -130,19 +130,74 @@ module.exports = class Member {
     }
 
     putUpdateImage(req, res, next) {
-        console.log('aaa')
         const form = new formidable.IncomingForm();
-        form.parse(req, function (err, fields, files) {
-            if(err){console.log(err)}
-            console.log('bbb')
-            console.log(fields)
-            console.log(files)
+
+        const token = req.headers['token'];
+        //確定token是否有輸入
+        if (check.checkNull(token) === true) {
             res.json({
-                name: fields.name,
-                password: fields.password,
-                file: files.file
+                err: "請輸入token！"
             })
-        })
+        } else if (check.checkNull(token) === false) {
+            verify(token).then(tokenResult => {
+                if (tokenResult === false) {
+                    res.json({
+                        result: {
+                            status: "token錯誤。",
+                            err: "請重新登入。"
+                        }
+                    })
+                } else {
+                    form.parse(req, async function (err, fields, files) {
+                        // 確認檔案大小是否小於1MB
+                        if (check.checkFileSize(files.file.size) === true) {
+                            res.json({
+                                result: {
+                                    status: "上傳檔案失敗。",
+                                    err: "請上傳小於1MB的檔案"
+                                }
+                            })
+                            return;
+                        }
+
+                        // 確認檔案型態是否為png, jpg, jpeg
+                        if (check.checkFileType(files.file.type) === true) {
+                            // 將圖片轉成base64編碼
+                            const image = await fileToBase64(files.file.path);
+
+                            const id = tokenResult;
+
+                            // 進行加密
+                            const password = encryption(fields.password);
+                            const memberUpdateData = {
+                                img: image,
+                                name: fields.name,
+                                password: password,
+                                update_date: onTime()
+                            }
+
+                            updateAction(id, memberUpdateData).then(result => {
+                                res.json({
+                                    result: result
+                                })
+                            }, (err) => {
+                                res.json({
+                                    result: err
+                                })
+                            })
+                        } else {
+                            res.json({
+                                result: {
+                                    status: "上傳檔案失敗。",
+                                    err: "請選擇正確的檔案格式。如：png, jpg, jpeg等。"
+                                }
+                            })
+                            return;
+                        }
+                    })
+                }
+            })
+        }
     }
 
 
@@ -164,4 +219,13 @@ const onTime = () => {
     (mi > 9 ? '' : '0') + mi, ":" +
     (ss > 9 ? '' : '0') + ss
     ].join('');
+}
+
+
+const fileToBase64 = (filePath) => {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, 'base64', function (err, data) {
+            resolve(data);
+        })
+    })
 }

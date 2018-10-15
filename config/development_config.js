@@ -2,10 +2,14 @@ require('dotenv').config()
 
 module.exports = {
     mysql: {
-        host: "localhost",
-        user: "root",
-        password: "nccutest",
-        database: "member"
+        host: process.env.HOST,
+        user: process.env.DATABASE_USER,
+        password: process.env.DATABASE_PASSWORD,
+        database: process.env.DATABASE
     },
-    secret: "cc"
+    secret: process.env.MY_SECRET,
+    senderMail: {
+        user: process.env.SEND_MAIL_USER,
+        password: process.env.SEND_MAIL_PASSWORD
+    }
 }
